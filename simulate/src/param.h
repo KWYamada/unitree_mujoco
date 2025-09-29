@@ -15,6 +15,7 @@ inline struct SimulationConfig
 
     int domain_id;
     std::string interface;
+    int enable_dds_bridge = 1;  // Enable/disable DDS bridge
 
     int use_joystick;
     std::string joystick_type;
@@ -35,6 +36,9 @@ inline struct SimulationConfig
             robot_scene = cfg["robot_scene"].as<std::string>();
             domain_id = cfg["domain_id"].as<int>();
             interface = cfg["interface"].as<std::string>();
+            if (cfg["enable_dds_bridge"]) {
+                enable_dds_bridge = cfg["enable_dds_bridge"].as<int>();
+            }
             use_joystick = cfg["use_joystick"].as<int>();
             joystick_type = cfg["joystick_type"].as<std::string>();
             joystick_device = cfg["joystick_device"].as<std::string>();

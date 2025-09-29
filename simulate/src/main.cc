@@ -545,25 +545,52 @@ void *UnitreeSdk2BridgeThread(void *arg)
     usleep(500000);
   }
 
-  unitree::robot::ChannelFactory::Instance()->Init(param::config.domain_id, param::config.interface);
+  try {
+    std::cout << "Initializing DDS with domain_id=" << param::config.domain_id 
+              << ", interface=" << param::config.interface << std::endl;
+    
+    unitree::robot::ChannelFactory::Instance()->Init(param::config.domain_id, param::config.interface);
+    std::cout << "DDS initialization successful" << std::endl;
 
-
-  int body_id = mj_name2id(m, mjOBJ_BODY, "torso_link");
-  if (body_id < 0) {
-    body_id = mj_name2id(m, mjOBJ_BODY, "base_link");
-  }
-  param::config.band_attached_link = 6 * body_id;
-  
-  std::unique_ptr<UnitreeSDK2BridgeBase> interface = nullptr;
-  if (m->nu > NUM_MOTOR_IDL_GO) {
-    interface = std::make_unique<G1Bridge>(m, d);
-  } else {
-    interface = std::make_unique<Go2Bridge>(m, d);
-  }
-  
-  while (true)
-  {
-    sleep(1);
+    int body_id = mj_name2id(m, mjOBJ_BODY, "torso_link");
+    if (body_id < 0) {
+      body_id = mj_name2id(m, mjOBJ_BODY, "base_link");
+    }
+    param::config.band_attached_link = 6 * body_id;
+    
+    std::unique_ptr<UnitreeSDK2BridgeBase> interface = nullptr;
+    if (m->nu > NUM_MOTOR_IDL_GO) {
+      std::cout << "Creating G1Bridge for " << m->nu << " actuators" << std::endl;
+      interface = std::make_unique<G1Bridge>(m, d);
+    } else {
+      std::cout << "Creating Go2Bridge for " << m->nu << " actuators" << std::endl;
+      interface = std::make_unique<Go2Bridge>(m, d);
+    }
+    
+    std::cout << "UnitreeSDK2Bridge initialized successfully" << std::endl;
+    
+    while (true)
+    {
+      sleep(1);
+    }
+  } catch (const std::exception& e) {
+    std::cerr << "Error initializing UnitreeSDK2Bridge: " << e.what() << std::endl;
+    std::cerr << "Continuing without DDS bridge..." << std::endl;
+    
+    // Continue without the bridge
+    while (true)
+    {
+      sleep(1);
+    }
+  } catch (...) {
+    std::cerr << "Unknown error initializing UnitreeSDK2Bridge" << std::endl;
+    std::cerr << "Continuing without DDS bridge..." << std::endl;
+    
+    // Continue without the bridge
+    while (true)
+    {
+      sleep(1);
+    }
   }
 }
 //------------------------------------------ main --------------------------------------------------
@@ -625,13 +652,22 @@ int main(int argc, char **argv)
 
   sim->use_elastic_band_ = param::config.enable_elastic_band;
 
-  std::thread unitree_thread(UnitreeSdk2BridgeThread, nullptr);
+  std::thread unitree_thread;
+  if (param::config.enable_dds_bridge) {
+    unitree_thread = std::thread(UnitreeSdk2BridgeThread, nullptr);
+  } else {
+    std::cout << "DDS bridge disabled in configuration" << std::endl;
+  }
 
   // start physics thread
   std::thread physicsthreadhandle(&PhysicsThread, sim.get(), param::config.robot_scene.c_str());
   // start simulation UI loop (blocking call)
   sim->RenderLoop();
   physicsthreadhandle.join();
+  
+  if (unitree_thread.joinable()) {
+    unitree_thread.join();
+  }
 
   pthread_exit(NULL);
   return 0;

@@ -32,7 +32,8 @@ set(SIM_DEPENDENCIES
 add_executable(unitree_mujoco ${SIM_SRC} src/main.cc)
 target_link_libraries(unitree_mujoco ${SIM_DEPENDENCIES})
 
-add_executable(test_headless src/test_headless.cc)
-target_link_libraries(test_headless mujoco::mujoco)
+# Commented out - test_headless.cc does not exist
+# add_executable(test_headless src/test_headless.cc)
+# target_link_libraries(test_headless mujoco::mujoco)
 
 add_executable(jstest src/joystick/jstest.cc src/joystick/joystick.cc)
